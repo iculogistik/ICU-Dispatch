@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICU-LOGISTIK - ETS2 Integration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        /* LOGIN */
+        .login-container {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            z-index: 9999; justify-content: center; align-items: center;
+        }
+        .login-container.active { display: flex; }
+        .login-box {
+            background: rgba(20,20,20,0.95); border: 3px solid #ff3333;
+            border-radius: 15px; padding: 40px; max-width: 500px; width: 90%;
+            box-shadow: 0 0 50px rgba(255,51,51,0.4);
+        }
+        .login-logo { text-align: center; margin-bottom: 20px; }
+        .login-logo h1 { color: #ff3333; font-size: 32px; text-shadow: 0 0 15px rgba(255,51,51,0.6); margin-top: 10px; }
+        .login-tabs { display: flex; gap: 10px; margin-bottom: 30px; }
+        .login-tab-btn {
+            flex: 1; padding: 12px;
+            background: rgba(255,51,51,0.1); border: 2px solid #444;
+            color: #aaa; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;
+        }
+        .login-tab-btn.active { background: #ff3333; border-color: #ff3333; color: #000; }
+        .login-form { display: none; }
+        .login-form.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #ff3333; font-weight: 500; }
+        .form-group input {
+            width: 100%; padding: 12px; background: #2a2a2a;
+            border: 2px solid #444; border-radius: 8px; color: #fff;
+        }
+        .form-group input:focus { outline: none; border-color: #ff3333; background: #333; }
+        .login-button {
+            width: 100%; padding: 12px; background: #ff3333; color: #ffffff;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s;
+        }
+        .login-button:hover { background: #ff1a1a; transform: translateY(-2px); box-shadow: 0 0 20px rgba(255,51,51,0.5); }
+        .profile-list { margin-top: 20px; max-height: 200px; overflow-y: auto; }
+        .profile-item {
+            background: rgba(255,51,51,0.05); border: 2px solid #ff3333;
+            border-radius: 8px; padding: 12px; margin-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .profile-btn { padding: 6px 12px; background: #ff3333; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 12px; font-weight: bold; }
+
+        /* HEADER */
+        .header {
+            background: rgba(255,51,51,0.05); border: 2px solid #ff3333;
+            border-radius: 10px; padding: 20px; margin-bottom: 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 20px; box-shadow: 0 0 20px rgba(255,51,51,0.2);
+        }
+        .header-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .header-logo {
+            width: 80px; height: 80px; background: rgba(255,51,51,0.1);
+            border: 2px solid #ff3333; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center; padding: 5px;
+        }
+        .header-logo img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,51,51,0.4)); }
+        .header h1 { font-size: 28px; color: #ff3333; margin: 0; text-shadow: 0 0 15px rgba(255,51,51,0.5); }
+        .player-info { background: rgba(255,51,51,0.1); border: 2px solid #ff3333; padding: 10px 15px; border-radius: 6px; color: #ff3333; font-weight: bold; }
+        .balance-display { background: rgba(255,51,51,0.1); border: 2px solid #ff3333; padding: 15px 30px; border-radius: 8px; font-size: 20px; font-weight: bold; color: #ff3333; }
+        .ets2-status { background: rgba(255,107,107,0.1); border: 2px solid #ff6b6b; padding: 15px 20px; border-radius: 8px; font-weight: bold; color: #ff6b6b; }
+        .ets2-status.connected { background: rgba(46,204,113,0.1); border-color: #2ecc71; color: #2ecc71; }
+        .logout-btn { background: #ff3333; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s; }
+        .logout-btn:hover { background: #ff1a1a; transform: translateY(-2px); }
+
+        /* TABS */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .tab-button {
+            background: rgba(45,45,45,0.8); border: 2px solid #444;
+            color: #aaa; padding: 10px 20px; border-radius: 8px 8px 0 0;
+            cursor: pointer; transition: all 0.3s; font-size: 14px; font-weight: 500; white-space: nowrap;
+        }
+        .tab-button:hover { background: rgba(60,60,60,0.9); color: #ff3333; border-color: #ff3333; }
+        .tab-button.active { background: #ff3333; border-color: #ff3333; color: #fff; box-shadow: 0 0 15px rgba(255,51,51,0.3); }
+        .tab-content {
+            display: none; background: rgba(30,30,30,0.95); border: 2px solid #ff3333;
+            border-radius: 0 8px 8px 8px; padding: 25px;
+            animation: fadeIn 0.3s; box-shadow: 0 0 15px rgba(255,51,51,0.1);
+        }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* BUTTONS */
+        button {
+            background: #ff3333; color: #fff; border: none; padding: 10px 20px;
+            border-radius: 6px; cursor: pointer; font-weight: bold; transition: all 0.3s; font-size: 14px;
+        }
+        button:hover { background: #ff1a1a; transform: translateY(-2px); }
+        button:active { transform: translateY(0); }
+
+        /* BOXES */
+        .telemetry-box { background: rgba(255,51,51,0.05); border: 2px solid #ff3333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .telemetry-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px; }
+        .telemetry-item { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 6px; border-left: 4px solid #ff3333; }
+        .telemetry-label { color: #aaa; font-size: 12px; margin-bottom: 5px; }
+        .telemetry-value { color: #ff3333; font-size: 20px; font-weight: bold; }
+
+        .current-job { background: rgba(255,51,51,0.08); border: 2px solid #ff3333; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .current-job h3 { color: #ff3333; margin-bottom: 15px; }
+        .job-detail { color: #aaa; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .job-detail strong { color: #ff3333; }
+
+        /* AUTO-TRACK BADGE */
+        .auto-track-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(46,204,113,0.15); border: 2px solid #2ecc71;
+            color: #2ecc71; padding: 6px 12px; border-radius: 20px;
+            font-size: 12px; font-weight: bold; margin-bottom: 15px;
+        }
+        .auto-track-badge .dot {
+            width: 8px; height: 8px; background: #2ecc71; border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+
+        /* JOB NOTIFICATION */
+        .job-notification {
+            position: fixed; top: 20px; right: 20px; z-index: 9998;
+            background: rgba(46,204,113,0.95); border: 2px solid #2ecc71;
+            border-radius: 10px; padding: 15px 20px; max-width: 350px;
+            color: #000; font-weight: bold;
+            transform: translateX(400px); transition: transform 0.4s ease;
+            box-shadow: 0 4px 20px rgba(46,204,113,0.4);
+        }
+        .job-notification.show { transform: translateX(0); }
+        .job-notification .notif-title { font-size: 16px; margin-bottom: 5px; }
+        .job-notification .notif-detail { font-size: 13px; font-weight: normal; }
+
+        table { width: 100%; border-collapse: collapse; background: #2a2a2a; border: 2px solid #ff3333; border-radius: 6px; }
+        thead { background: #ff3333; color: #fff; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; }
+        tbody tr:hover { background: #353535; }
+
+        .positive { color: #ff3333; }
+        .negative { color: #ff6b6b; }
+
+        .info-box { background: rgba(255,51,51,0.05); border-left: 4px solid #ff3333; padding: 15px; border-radius: 6px; margin-bottom: 15px; color: #aaa; }
+        .info-box h3 { color: #ff3333; margin-bottom: 8px; }
+        .warning { background: rgba(255,165,0,0.1); border-left-color: #ffa500; color: #ffa500; }
+        .danger { background: rgba(255,107,107,0.1); border-left-color: #ff6b6b; color: #ff6b6b; }
+        .success { background: rgba(46,204,113,0.1); border-left-color: #2ecc71; color: #2ecc71; }
+
+        .progress-bar { width: 100%; height: 30px; background: #2a2a2a; border: 1px solid #ff3333; border-radius: 6px; overflow: hidden; margin: 10px 0; }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, #ff3333 0%, #ff6b6b 100%);
+            transition: width 0.5s ease; display: flex; align-items: center; justify-content: center;
+            color: #fff; font-weight: bold; font-size: 12px; text-shadow: 0 0 5px rgba(0,0,0,0.5); min-width: 30px;
+        }
+
+        .error-message { background: rgba(255,51,51,0.1); border: 2px solid #ff3333; border-radius: 6px; padding: 10px; color: #ff3333; margin-bottom: 15px; display: none; }
+        .error-message.show { display: block; }
+
+        h2 { color: #ff3333; text-shadow: 0 0 10px rgba(255,51,51,0.3); }
+
+        /* STATUS INDICATORS */
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+        .status-green { background: #2ecc71; box-shadow: 0 0 6px #2ecc71; }
+        .status-red { background: #ff3333; }
+        .status-orange { background: #ffa500; box-shadow: 0 0 6px #ffa500; animation: pulse 1s infinite; }
+
+        /* TRACKED JOB BADGE */
+        .badge-auto { background: rgba(46,204,113,0.2); border: 1px solid #2ecc71; color: #2ecc71; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .badge-manual { background: rgba(255,51,51,0.2); border: 1px solid #ff3333; color: #ff3333; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+
+        @media (max-width: 768px) {
+            .telemetry-row { grid-template-columns: 1fr; }
+            .header { flex-direction: column; }
+            .header-left { flex-direction: column; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- JOB COMPLETED NOTIFICATION -->
+<div class="job-notification" id="jobNotification">
+    <div class="notif-title" id="notifTitle">✅ Auftrag automatisch gespeichert!</div>
+    <div class="notif-detail" id="notifDetail"></div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-container active" id="loginContainer">
+    <div class="login-box">
+        <div class="login-logo">
+            <img id="loginLogoImg" src="" alt="ICU-LOGISTIK Logo" style="display:none;">
+            <h1>🚛 ICU-LOGISTIK</h1>
+            <p style="color:#aaa; margin-top:5px;">ETS2 Telemetry Integration</p>
+        </div>
+        <div class="login-tabs">
+            <button class="login-tab-btn active" onclick="switchLoginTab('register', event)">Registrieren</button>
+            <button class="login-tab-btn" onclick="switchLoginTab('login', event)">Anmelden</button>
+        </div>
+        <div id="register" class="login-form active">
+            <h3 style="color:#ff3333; margin-bottom:20px;">Neues Profil</h3>
+            <div class="error-message" id="registerError"></div>
+            <div class="form-group">
+                <label>👤 Name</label>
+                <input type="text" id="registerName" placeholder="z.B. Max Müller" maxlength="30">
+            </div>
+            <button class="login-button" onclick="registerPlayer()">✨ Erstellen</button>
+            <div class="info-box" style="margin-top:20px;">
+                <strong style="color:#ff3333;">Auto-Tracking:</strong> Aufträge werden automatisch erkannt und nach Abschluss gespeichert — kein manuelles Eingreifen nötig!
+            </div>
+        </div>
+        <div id="login" class="login-form">
+            <h3 style="color:#ff3333; margin-bottom:20px;">Profil wählen</h3>
+            <div id="profileList" class="profile-list"><p style="color:#aaa;">Keine Profile vorhanden</p></div>
+            <button class="login-button" onclick="switchLoginTab('register', event)" style="margin-top:20px;">➕ Neues Profil</button>
+        </div>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="container" id="mainApp" style="display:none;">
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">
+                <img id="headerLogoImg" src="" alt="Logo" style="display:none;">
+                <span id="logoFallback" style="font-size:48px;">🚛</span>
+            </div>
+            <div>
+                <h1>ICU-LOGISTIK</h1>
+                <div class="player-info">👤 <span id="playerName">Spieler</span></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+            <div class="ets2-status" id="ets2Status">❌ ETS2 nicht verbunden</div>
+            <div class="balance-display">💰 <span id="balance">€5.000.000</span></div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="switchTab('telemetry', event)">📊 Live Tracking</button>
+        <button class="tab-button" onclick="switchTab('current', event)">🎯 Aktuelle Fahrt</button>
+        <button class="tab-button" onclick="switchTab('history', event)">📋 Fahrthistorie</button>
+        <button class="tab-button" onclick="switchTab('wallet', event)">💰 Geldbörse</button>
+        <button class="tab-button" onclick="switchTab('settings', event)">⚙️ Einstellungen</button>
+    </div>
+
+    <!-- TELEMETRY TAB -->
+    <div id="telemetry" class="tab-content active">
+        <h2>📊 ETS2 Live Tracking</h2>
+        <div class="auto-track-badge">
+            <span class="dot"></span>
+            AUTO-TRACKING AKTIV — Aufträge werden automatisch erkannt & gespeichert
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">🚗 Fahrzeugstatus</h3>
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">⚡ Geschwindigkeit</div>
+                    <div class="telemetry-value" id="speed">0 km/h</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">⛽ Kraftstoff</div>
+                    <div class="telemetry-value" id="fuel">—</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🔧 Motorschäden</div>
+                    <div class="telemetry-value" id="damage">0%</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">📏 Tacho</div>
+                    <div class="telemetry-value" id="odometer">0 km</div>
+                </div>
+            </div>
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🚛 LKW</div>
+                    <div class="telemetry-value" id="truckModel" style="font-size:14px;">—</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">⚙️ Gang</div>
+                    <div class="telemetry-value" id="gear">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">📍 Navigation</h3>
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🏎️ Tempolimit</div>
+                    <div class="telemetry-value" id="speedLimit">—</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">📐 Verbleibende Strecke</div>
+                    <div class="telemetry-value" id="navDistance">—</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">💼 Auftragsstatus</h3>
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">📦 Erkennung</div>
+                    <div class="telemetry-value" id="jobTrackStatus">Warte auf ETS2...</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">💵 Aktueller Auftragslohn</div>
+                    <div class="telemetry-value positive" id="jobReward">€0</div>
+                </div>
+            </div>
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🏭 Von</div>
+                    <div class="telemetry-value" id="jobFromLive" style="font-size:14px;">—</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🏁 Nach</div>
+                    <div class="telemetry-value" id="jobToLive" style="font-size:14px;">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CURRENT JOB TAB -->
+    <div id="current" class="tab-content">
+        <h2>🎯 Aktuelle Fahrt</h2>
+        <div class="auto-track-badge">
+            <span class="dot"></span>
+            AUTOMATISCH GESPEICHERT wenn Auftrag endet
+        </div>
+
+        <div id="noJob" class="info-box warning">
+            <strong>⚠️ Kein aktiver Auftrag</strong> — Nehmen Sie einen Auftrag in ETS2 an!
+        </div>
+
+        <div id="jobInfo" class="current-job" style="display:none;">
+            <h3>📦 Auftragsinformationen</h3>
+            <div class="job-detail"><strong>🏭 Abholung:</strong><span id="jobFrom">—</span></div>
+            <div class="job-detail"><strong>🏢 Auftraggeber:</strong><span id="jobFromCompany">—</span></div>
+            <div class="job-detail"><strong>🏁 Lieferziel:</strong><span id="jobTo">—</span></div>
+            <div class="job-detail"><strong>🏢 Empfänger:</strong><span id="jobToCompany">—</span></div>
+            <div class="job-detail"><strong>📦 Ladung:</strong><span id="jobCargo">—</span></div>
+            <div class="job-detail"><strong>💰 Vergütung:</strong><span id="jobPrice" style="color:#ff3333;">€0</span></div>
+            <div class="job-detail"><strong>⏰ Deadline:</strong><span id="jobDeadline">—</span></div>
+            <div class="job-detail"><strong>⏳ Verbleibende Zeit:</strong><span id="jobTimeLeft">—</span></div>
+
+            <h3 style="color:#ff3333; margin-top:20px; margin-bottom:10px;">📊 Fortschritt</h3>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width:0%;">0%</div>
+            </div>
+            <div class="job-detail" style="margin-top:8px;">
+                <strong>Zurückgelegt:</strong><span id="jobTraveled">0 km</span>
+            </div>
+            <div class="job-detail">
+                <strong>Verbleibend (Navigation):</strong><span id="jobRemaining">—</span>
+            </div>
+
+            <div class="info-box success" style="margin-top:15px;">
+                <strong>✅ Auto-Tracking:</strong> Wenn ETS2 den Auftrag als abgeschlossen meldet, wird dieser automatisch in der Fahrthistorie gespeichert!
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="history" class="tab-content">
+        <h2>📋 Fahrthistorie</h2>
+        <div style="margin-bottom:15px; display:flex; gap:10px; flex-wrap:wrap;">
+            <button onclick="exportData()">📥 Exportieren</button>
+            <button onclick="clearHistory()" style="background:#ff6b6b;">🗑️ Verlauf löschen</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Von</th>
+                    <th>Nach</th>
+                    <th>Ladung</th>
+                    <th>km</th>
+                    <th class="positive">Verdienst</th>
+                    <th>Tracking</th>
+                    <th>Datum</th>
+                </tr>
+            </thead>
+            <tbody id="historyTable">
+                <tr><td colspan="7" style="text-align:center;">Keine Fahrten</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- WALLET TAB -->
+    <div id="wallet" class="tab-content">
+        <h2>💰 Finanzübersicht</h2>
+        <div class="telemetry-box">
+            <div class="telemetry-row">
+                <div class="telemetry-item">
+                    <div class="telemetry-label">💰 Kontostand</div>
+                    <div class="telemetry-value positive" id="totalBalance">€5.000.000</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">📈 Auto-erfasste Einnahmen</div>
+                    <div class="telemetry-value positive" id="totalEarned">€0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">🚗 Fahrten</div>
+                    <div class="telemetry-value" id="totalTrips">0</div>
+                </div>
+                <div class="telemetry-item">
+                    <div class="telemetry-label">📏 Gesamtkilometer</div>
+                    <div class="telemetry-value" id="totalKm">0 km</div>
+                </div>
+            </div>
+        </div>
+        <h3 style="color:#ff3333; margin-top:30px; margin-bottom:15px;">📊 Transaktionsverlauf</h3>
+        <table>
+            <thead>
+                <tr><th>Zeit</th><th>Typ</th><th>Beschreibung</th><th class="positive">Betrag</th></tr>
+            </thead>
+            <tbody id="transactionTable">
+                <tr><td colspan="4" style="text-align:center;">Keine Transaktionen</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="settings" class="tab-content">
+        <h2>⚙️ Einstellungen</h2>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">📸 Logo</h3>
+            <div style="margin:20px 0;">
+                <label for="logoInput" style="color:#ff3333; font-weight:bold; display:block; margin-bottom:10px;">Logo-Datei (PNG, JPG, SVG):</label>
+                <input type="file" id="logoInput" accept="image/*" onchange="loadLogo(event)" style="color:#ff3333;">
+            </div>
+            <button onclick="clearLogo()" style="width:100%; background:#ff6b6b;">🗑️ Logo löschen</button>
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">🤖 Auto-Tracking Einstellungen</h3>
+            <div class="info-box success">
+                <strong>✅ Automatisch aktiv:</strong> Aufträge werden lückenlos überwacht. Neue Aufträge werden erkannt, laufende verfolgt, abgeschlossene automatisch gespeichert.
+            </div>
+            <div style="margin-top:15px;">
+                <label style="color:#ff3333; font-weight:bold; display:flex; align-items:center; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="autoSaveToggle" checked onchange="saveSettings()" style="width:20px; height:20px; cursor:pointer;">
+                    Aufträge automatisch speichern
+                </label>
+            </div>
+            <div style="margin-top:15px;">
+                <label style="color:#ff3333; font-weight:bold; display:flex; align-items:center; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="notifToggle" checked onchange="saveSettings()" style="width:20px; height:20px; cursor:pointer;">
+                    Benachrichtigung bei Auftragsabschluss
+                </label>
+            </div>
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">🔌 ETS2 Verbindung</h3>
+            <div class="info-box success">
+                <strong>✅ Verbindung:</strong> App verbindet sich automatisch mit dem ETS2 Telemetry Server auf Port 25555.
+            </div>
+            <h4 style="color:#ff3333; margin:20px 0 10px 0;">Einrichtung:</h4>
+            <ol style="color:#aaa; padding-left:20px; line-height:1.8;">
+                <li>Entpacken Sie <code style="color:#ff3333;">ets2-telemetry-server-master.zip</code></li>
+                <li>Kopieren Sie das Plugin in ETS2: <code style="color:#ff3333;">...\plugins\ets2-telemetry-server.dll</code></li>
+                <li>Starten Sie <code style="color:#ff3333;">Ets2Telemetry.exe</code></li>
+                <li>Starten Sie ETS2 — App verbindet sich automatisch!</li>
+            </ol>
+            <div class="telemetry-item" style="margin-top:15px;">
+                <div class="telemetry-label">Verbindungsstatus</div>
+                <div class="telemetry-value" id="connectionStatus">Nicht verbunden</div>
+            </div>
+            <button onclick="testConnection()" style="width:100%; margin-top:15px;">🔄 Verbindung testen</button>
+        </div>
+
+        <div class="telemetry-box">
+            <h3 style="color:#ff3333; margin-bottom:15px;">💾 Datenverwaltung</h3>
+            <button onclick="exportData()" style="width:100%; margin-bottom:10px;">📥 Daten exportieren</button>
+            <button onclick="clearData()" style="width:100%; background:#ff6b6b;">🗑️ Alle Daten löschen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let currentPlayerId = null;
+let gameData = {};
+let ets2Data = null;
+let telemetryInterval = null;
+let settings = { autoSave: true, notifications: true };
+
+// Job Tracking State
+let jobTracker = {
+    activeJobId: null,      // Fingerprint des aktuellen Auftrags
+    jobStartTime: null,     // Wann wurde Auftrag erkannt
+    lastKnownJobIncome: 0,  // Letzter bekannter Auftragsgewinn
+    jobWasActive: false,    // War im letzten Tick ein Auftrag aktiv?
+    completedJobIds: new Set(), // Bereits gespeicherte Auftrags-IDs
+    startOdometer: 0,       // Kilometerstand bei Auftragsstart
+};
+
+// ============================================================
+// HELPERS
+// ============================================================
+function formatMoney(amount) {
+    if (!amount && amount !== 0) return '€—';
+    return '€' + Math.round(amount).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function formatDistance(meters) {
+    if (meters == null) return '—';
+    if (meters < 1000) return meters + ' m';
+    return (meters / 1000).toFixed(1) + ' km';
+}
+
+function makeJobId(job) {
+    if (!job || !job.sourceCity) return null;
+    return `${job.sourceCity}_${job.destinationCity}_${job.income}`;
+}
+
+// ============================================================
+// LOGO
+// ============================================================
+function loadLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        localStorage.setItem('icu_logo', e.target.result);
+        applyLogo(e.target.result);
+        showNotification('✅ Logo hochgeladen!', '');
+    };
+    reader.readAsDataURL(file);
+}
+
+function applyLogo(logoData) {
+    const loginLogo = document.getElementById('loginLogoImg');
+    const headerLogo = document.getElementById('headerLogoImg');
+    const logoFallback = document.getElementById('logoFallback');
+    loginLogo.src = logoData; loginLogo.style.display = 'block';
+    headerLogo.src = logoData; headerLogo.style.display = 'block';
+    logoFallback.style.display = 'none';
+}
+
+function clearLogo() {
+    if (!confirm('Logo wirklich löschen?')) return;
+    localStorage.removeItem('icu_logo');
+    document.getElementById('loginLogoImg').style.display = 'none';
+    document.getElementById('headerLogoImg').style.display = 'none';
+    document.getElementById('logoFallback').style.display = 'block';
+}
+
+function loadStoredLogo() {
+    const stored = localStorage.getItem('icu_logo');
+    if (stored) applyLogo(stored);
+}
+
+// ============================================================
+// AUTH
+// ============================================================
+function initializePlayerData(name) {
+    return {
+        id: Math.random().toString(36).substr(2, 9),
+        name,
+        company: { balance: 5000000 },
+        trips: [],
+        transactions: [],
+        currentTrip: null
+    };
+}
+
+function registerPlayer() {
+    const name = document.getElementById('registerName').value.trim();
+    const errorDiv = document.getElementById('registerError');
+    errorDiv.classList.remove('show');
+
+    if (!name || name.length < 2 || name.length > 30) {
+        errorDiv.textContent = '⚠️ Name muss 2–30 Zeichen lang sein!';
+        errorDiv.classList.add('show'); return;
+    }
+    const players = getAllPlayers();
+    if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+        errorDiv.textContent = '⚠️ Name existiert bereits!';
+        errorDiv.classList.add('show'); return;
+    }
+    const newPlayer = initializePlayerData(name);
+    players.push(newPlayer);
+    localStorage.setItem('icu_players', JSON.stringify(players));
+    loginPlayer(newPlayer.id);
+    document.getElementById('registerName').value = '';
+}
+
+function loginPlayer(playerId) {
+    const players = getAllPlayers();
+    const player = players.find(p => p.id === playerId);
+    if (player) {
+        currentPlayerId = playerId;
+        gameData = player;
+        localStorage.setItem('icu_current_player', playerId);
+        showMainApp();
+    }
+}
+
+function getAllPlayers() {
+    return JSON.parse(localStorage.getItem('icu_players') || '[]');
+}
+
+function loadProfiles() {
+    const players = getAllPlayers();
+    const el = document.getElementById('profileList');
+    el.innerHTML = players.length === 0
+        ? '<p style="color:#aaa;">Keine Profile vorhanden</p>'
+        : players.map(p => `
+            <div class="profile-item">
+                <div>
+                    <div style="color:#ff3333; font-weight:bold;">👤 ${p.name}</div>
+                    <div style="color:#aaa; font-size:12px;">💰 ${formatMoney(p.company.balance)} | 🚗 ${p.trips.length} Fahrten</div>
+                </div>
+                <div>
+                    <button class="profile-btn" onclick="loginPlayer('${p.id}')" style="margin-right:5px;">Spielen</button>
+                    <button class="profile-btn" onclick="deleteProfile('${p.id}')" style="background:#ff6b6b;">Löschen</button>
+                </div>
+            </div>`).join('');
+}
+
+function deleteProfile(playerId) {
+    if (!confirm('Profil wirklich löschen?')) return;
+    let players = getAllPlayers().filter(p => p.id !== playerId);
+    localStorage.setItem('icu_players', JSON.stringify(players));
+    loadProfiles();
+}
+
+function switchLoginTab(tab, event) {
+    document.querySelectorAll('.login-form').forEach(f => f.classList.remove('active'));
+    document.querySelectorAll('.login-tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tab).classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
+    if (tab === 'login') loadProfiles();
+}
+
+function logout() {
+    if (!confirm('Ausloggen?')) return;
+    currentPlayerId = null; gameData = {};
+    if (telemetryInterval) clearInterval(telemetryInterval);
+    document.getElementById('mainApp').style.display = 'none';
+    document.getElementById('loginContainer').classList.add('active');
+}
+
+function showMainApp() {
+    document.getElementById('loginContainer').classList.remove('active');
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('playerName').textContent = gameData.name;
+    loadSettings();
+    updateBalance();
+    refreshHistory();
+    startTelemetry();
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function saveSettings() {
+    settings.autoSave = document.getElementById('autoSaveToggle').checked;
+    settings.notifications = document.getElementById('notifToggle').checked;
+    localStorage.setItem('icu_settings', JSON.stringify(settings));
+}
+
+function loadSettings() {
+    const stored = localStorage.getItem('icu_settings');
+    if (stored) settings = { ...settings, ...JSON.parse(stored) };
+    document.getElementById('autoSaveToggle').checked = settings.autoSave;
+    document.getElementById('notifToggle').checked = settings.notifications;
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+let notifTimeout = null;
+function showNotification(title, detail) {
+    if (!settings.notifications) return;
+    const el = document.getElementById('jobNotification');
+    document.getElementById('notifTitle').textContent = title;
+    document.getElementById('notifDetail').textContent = detail;
+    el.classList.add('show');
+    if (notifTimeout) clearTimeout(notifTimeout);
+    notifTimeout = setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+// ============================================================
+// TELEMETRY — VERBINDUNG
+// ============================================================
+function startTelemetry() {
+    if (telemetryInterval) clearInterval(telemetryInterval);
+    telemetryInterval = setInterval(fetchTelemetry, 1000);
+}
+
+async function fetchTelemetry() {
+    try {
+        const response = await fetch('http://localhost:25555/api/ets2/telemetry');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        ets2Data = data;
+        onTelemetryUpdate(data);
+        setConnected(true);
+    } catch (e) {
+        setConnected(false);
+        ets2Data = null;
+        onTelemetryDisconnected();
+    }
+}
+
+function setConnected(ok) {
+    const el = document.getElementById('ets2Status');
+    const statusEl = document.getElementById('connectionStatus');
+    if (ok) {
+        el.classList.add('connected');
+        el.textContent = '✅ ETS2 verbunden';
+        if (statusEl) statusEl.innerHTML = '<span class="status-indicator status-green"></span>Verbunden';
+    } else {
+        el.classList.remove('connected');
+        el.textContent = '❌ ETS2 nicht verbunden';
+        if (statusEl) statusEl.innerHTML = '<span class="status-indicator status-red"></span>Nicht verbunden';
+    }
+}
+
+// ============================================================
+// TELEMETRY — UI UPDATE
+// ============================================================
+function onTelemetryUpdate(data) {
+    const truck = data.truck || {};
+    const nav = data.navigation || {};
+    const job = data.job || {};
+
+    // Fahrzeugdaten
+    const speedKmh = Math.round((truck.speed || 0) * 3.6);
+    document.getElementById('speed').textContent = speedKmh + ' km/h';
+
+    const fuelPct = truck.fuelCapacity > 0
+        ? Math.round((truck.fuel / truck.fuelCapacity) * 100) : 0;
+    const fuelEl = document.getElementById('fuel');
+    fuelEl.textContent = fuelPct + '%';
+    fuelEl.style.color = fuelPct < 20 ? '#ffa500' : '#ff3333';
+
+    const wearMax = Math.max(
+        truck.wearEngine || 0,
+        truck.wearTransmission || 0,
+        truck.wearChassis || 0,
+        truck.wearWheels || 0
+    );
+    document.getElementById('damage').textContent = Math.round(wearMax * 100) + '%';
+    document.getElementById('odometer').textContent = Math.round(truck.odometer || 0) + ' km';
+
+    const makeModel = (truck.make && truck.model) ? `${truck.make} ${truck.model}` : '—';
+    document.getElementById('truckModel').textContent = makeModel;
+    document.getElementById('gear').textContent = truck.gear != null ? (truck.gear === 0 ? 'N' : (truck.gear < 0 ? 'R' : truck.gear)) : '—';
+
+    // Navigation
+    document.getElementById('speedLimit').textContent = nav.speedLimit ? nav.speedLimit + ' km/h' : '—';
+    document.getElementById('navDistance').textContent = formatDistance(nav.estimatedDistance);
+
+    // Auftragslive-Update
+    updateJobLiveUI(job, truck, nav);
+
+    // AUTO-TRACKING
+    autoTrackJob(job, truck);
+}
+
+function onTelemetryDisconnected() {
+    document.getElementById('speed').textContent = '—';
+    document.getElementById('fuel').textContent = '—';
+    document.getElementById('damage').textContent = '—';
+    document.getElementById('odometer').textContent = '—';
+    document.getElementById('truckModel').textContent = '—';
+    document.getElementById('gear').textContent = '—';
+    document.getElementById('speedLimit').textContent = '—';
+    document.getElementById('navDistance').textContent = '—';
+    document.getElementById('jobTrackStatus').textContent = 'Warte auf ETS2...';
+    document.getElementById('jobReward').textContent = '€—';
+    document.getElementById('jobFromLive').textContent = '—';
+    document.getElementById('jobToLive').textContent = '—';
+    document.getElementById('noJob').style.display = 'block';
+    document.getElementById('jobInfo').style.display = 'none';
+}
+
+function updateJobLiveUI(job, truck, nav) {
+    const hasJob = !!(job.sourceCity && job.destinationCity);
+
+    // Live-Tracking Tab
+    if (hasJob) {
+        document.getElementById('jobTrackStatus').innerHTML =
+            '<span class="status-indicator status-orange"></span>Aktiv';
+        document.getElementById('jobReward').textContent = formatMoney(job.income);
+        document.getElementById('jobFromLive').textContent =
+            `${job.sourceCity}${job.sourceCompany ? ' (' + job.sourceCompany + ')' : ''}`;
+        document.getElementById('jobToLive').textContent =
+            `${job.destinationCity}${job.destinationCompany ? ' (' + job.destinationCompany + ')' : ''}`;
+    } else {
+        document.getElementById('jobTrackStatus').innerHTML =
+            '<span class="status-indicator status-red"></span>Kein Auftrag';
+        document.getElementById('jobReward').textContent = '€0';
+        document.getElementById('jobFromLive').textContent = '—';
+        document.getElementById('jobToLive').textContent = '—';
+    }
+
+    // Aktuelle Fahrt Tab
+    if (hasJob) {
+        document.getElementById('noJob').style.display = 'none';
+        document.getElementById('jobInfo').style.display = 'block';
+
+        document.getElementById('jobFrom').textContent = job.sourceCity || '—';
+        document.getElementById('jobFromCompany').textContent = job.sourceCompany || '—';
+        document.getElementById('jobTo').textContent = job.destinationCity || '—';
+        document.getElementById('jobToCompany').textContent = job.destinationCompany || '—';
+        document.getElementById('jobCargo').textContent =
+            (ets2Data?.trailer?.name) || '—';
+        document.getElementById('jobPrice').textContent = formatMoney(job.income);
+
+        // Deadline & Zeit
+        if (job.deadlineTime) {
+            try {
+                const dl = new Date(job.deadlineTime);
+                document.getElementById('jobDeadline').textContent =
+                    dl.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            } catch { document.getElementById('jobDeadline').textContent = '—'; }
+        }
+        if (job.remainingTime) {
+            try {
+                const rt = new Date(job.remainingTime);
+                document.getElementById('jobTimeLeft').textContent =
+                    rt.getUTCHours() + 'h ' + rt.getUTCMinutes() + 'min';
+            } catch { document.getElementById('jobTimeLeft').textContent = '—'; }
+        }
+
+        // Fortschritt via Navigation
+        const totalDist = nav.estimatedDistance || 0;
+        const startDist = jobTracker.startOdometer || truck.odometer || 0;
+        const traveled = Math.max(0, (truck.odometer || 0) - startDist);
+        const estimatedTotal = traveled + (totalDist / 1000);
+        const progress = estimatedTotal > 0 ? Math.min(100, (traveled / estimatedTotal) * 100) : 0;
+
+        document.getElementById('progressBar').style.width = progress.toFixed(0) + '%';
+        document.getElementById('progressBar').textContent = progress.toFixed(0) + '%';
+        document.getElementById('jobTraveled').textContent = traveled.toFixed(1) + ' km';
+        document.getElementById('jobRemaining').textContent = formatDistance(nav.estimatedDistance);
+    } else {
+        document.getElementById('noJob').style.display = 'block';
+        document.getElementById('jobInfo').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressBar').textContent = '0%';
+    }
+}
+
+// ============================================================
+// AUTO-TRACKING KERN
+// ============================================================
+function autoTrackJob(job, truck) {
+    const hasJob = !!(job && job.sourceCity && job.destinationCity && job.income > 0);
+    const currentJobId = hasJob ? makeJobId(job) : null;
+
+    // --- NEUER AUFTRAG ERKANNT ---
+    if (hasJob && currentJobId !== jobTracker.activeJobId) {
+        jobTracker.activeJobId = currentJobId;
+        jobTracker.jobStartTime = new Date();
+        jobTracker.lastKnownJobIncome = job.income;
+        jobTracker.jobWasActive = true;
+        jobTracker.startOdometer = truck.odometer || 0;
+
+        if (!jobTracker.completedJobIds.has(currentJobId)) {
+            console.log('[ICU-TRACKING] Neuer Auftrag erkannt:', currentJobId);
+            showNotification(
+                '🚛 Neuer Auftrag erkannt!',
+                `${job.sourceCity} → ${job.destinationCity} | ${formatMoney(job.income)}`
+            );
+        }
+    }
+
+    // --- AUFTRAG ABGESCHLOSSEN (Auftragsdaten verschwinden) ---
+    if (!hasJob && jobTracker.jobWasActive && jobTracker.activeJobId) {
+        const completedId = jobTracker.activeJobId;
+
+        if (!jobTracker.completedJobIds.has(completedId) && settings.autoSave) {
+            saveCompletedJob(completedId, truck);
+        }
+
+        // Reset
+        jobTracker.jobWasActive = false;
+        jobTracker.activeJobId = null;
+        jobTracker.jobStartTime = null;
+    }
+
+    // Aktuell laufenden Job merken
+    if (hasJob) {
+        jobTracker.jobWasActive = true;
+        jobTracker.lastKnownJobIncome = job.income;
+    }
+}
+
+// ============================================================
+// AUFTRAG SPEICHERN (automatisch)
+// ============================================================
+function saveCompletedJob(completedId, truck) {
+    // Wir rekonstruieren die Daten aus der completedId (sourceCity_destCity_income)
+    const parts = completedId.split('_');
+    // Speichere aus dem letzten bekannten ets2Data
+    const lastJob = ets2Data?.job || {};
+    const source = lastJob.sourceCity || parts[0] || 'Unbekannt';
+    const dest = lastJob.destinationCity || parts[1] || 'Unbekannt';
+    const income = lastJob.income || parseInt(parts[2]) || 0;
+    const cargo = ets2Data?.trailer?.name || '—';
+    const distTraveled = Math.max(0, (truck.odometer || 0) - (jobTracker.startOdometer || 0));
+    const duration = jobTracker.jobStartTime
+        ? Math.round((Date.now() - jobTracker.jobStartTime.getTime()) / 60000) : 0;
+
+    const trip = {
+        id: completedId + '_' + Date.now(),
+        from: source,
+        fromCompany: lastJob.sourceCompany || '',
+        to: dest,
+        toCompany: lastJob.destinationCompany || '',
+        cargo: cargo,
+        distance: Math.round(distTraveled),
+        earnings: income,
+        duration: duration,
+        tracking: 'auto',
+        date: new Date().toLocaleString('de-DE')
+    };
+
+    gameData.company.balance += income;
+    gameData.trips.unshift(trip); // Neueste oben
+    gameData.transactions.unshift({
+        time: new Date().toLocaleTimeString('de-DE'),
+        type: '🤖 Auto-Tracking',
+        description: `${source} → ${dest}`,
+        amount: income
+    });
+
+    jobTracker.completedJobIds.add(completedId);
+    saveGameData();
+    updateBalance();
+    refreshHistory();
+
+    showNotification(
+        '✅ Auftrag automatisch gespeichert!',
+        `${source} → ${dest} | +${formatMoney(income)} | ${Math.round(distTraveled)} km`
+    );
+    console.log('[ICU-TRACKING] Auftrag gespeichert:', trip);
+}
+
+// ============================================================
+// TEST VERBINDUNG
+// ============================================================
+function testConnection() {
+    fetch('http://localhost:25555/api/ets2/telemetry')
+        .then(r => r.json())
+        .then(d => {
+            const isConnected = d?.game?.connected;
+            alert(isConnected ? '✅ ETS2 verbunden und Spiel aktiv!' : '⚠️ Server erreichbar, aber ETS2 nicht verbunden.');
+        })
+        .catch(() => alert('❌ ETS2 Telemetry Server nicht erreichbar.\n\nBitte:\n1. Ets2Telemetry.exe starten\n2. ETS2 starten\n3. Erneut testen'));
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function switchTab(tabName, event) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    if (event && event.target) event.target.classList.add('active');
+    if (tabName === 'history' || tabName === 'wallet') refreshHistory();
+}
+
+function updateBalance() {
+    const bal = formatMoney(gameData.company.balance);
+    document.getElementById('balance').textContent = bal;
+    document.getElementById('totalBalance').textContent = bal;
+}
+
+function refreshHistory() {
+    const tbody = document.getElementById('historyTable');
+    if (!gameData.trips || gameData.trips.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#aaa;">Keine Fahrten vorhanden</td></tr>';
+    } else {
+        tbody.innerHTML = gameData.trips.map(trip => `
+            <tr>
+                <td>${trip.from}${trip.fromCompany ? '<br><small style="color:#888;">' + trip.fromCompany + '</small>' : ''}</td>
+                <td>${trip.to}${trip.toCompany ? '<br><small style="color:#888;">' + trip.toCompany + '</small>' : ''}</td>
+                <td style="color:#aaa; font-size:13px;">${trip.cargo || '—'}</td>
+                <td>${trip.distance || 0}</td>
+                <td class="positive">${formatMoney(trip.earnings)}</td>
+                <td><span class="${trip.tracking === 'auto' ? 'badge-auto' : 'badge-manual'}">${trip.tracking === 'auto' ? '🤖 Auto' : '✋ Manuell'}</span></td>
+                <td style="font-size:12px; color:#888;">${trip.date}</td>
+            </tr>`).join('');
+    }
+
+    const totalTrips = gameData.trips.length;
+    const totalEarned = gameData.trips.reduce((s, t) => s + (t.earnings || 0), 0);
+    const totalKm = gameData.trips.reduce((s, t) => s + (t.distance || 0), 0);
+
+    document.getElementById('totalTrips').textContent = totalTrips;
+    document.getElementById('totalEarned').textContent = formatMoney(totalEarned);
+    document.getElementById('totalKm').textContent = totalKm + ' km';
+
+    const tbody2 = document.getElementById('transactionTable');
+    if (!gameData.transactions || gameData.transactions.length === 0) {
+        tbody2.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#aaa;">Keine Transaktionen</td></tr>';
+    } else {
+        tbody2.innerHTML = gameData.transactions.map(t => `
+            <tr>
+                <td style="font-size:12px;">${t.time}</td>
+                <td>${t.type}</td>
+                <td style="color:#aaa;">${t.description}</td>
+                <td class="positive">${formatMoney(t.amount)}</td>
+            </tr>`).join('');
+    }
+}
+
+function saveGameData() {
+    const players = getAllPlayers();
+    const idx = players.findIndex(p => p.id === currentPlayerId);
+    if (idx !== -1) { players[idx] = gameData; localStorage.setItem('icu_players', JSON.stringify(players)); }
+}
+
+function exportData() {
+    const json = JSON.stringify(gameData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `icu-logistik-${gameData.name}-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+}
+
+function clearHistory() {
+    if (!confirm('Fahrthistorie wirklich löschen? Der Kontostand bleibt erhalten.')) return;
+    gameData.trips = []; gameData.transactions = [];
+    saveGameData(); refreshHistory();
+    showNotification('🗑️ Verlauf gelöscht', '');
+}
+
+function clearData() {
+    if (!confirm('ALLE Daten löschen? Kontostand wird auf €5.000.000 zurückgesetzt!')) return;
+    gameData.trips = []; gameData.transactions = [];
+    gameData.company.balance = 5000000;
+    jobTracker.completedJobIds.clear();
+    saveGameData(); refreshHistory(); updateBalance();
+    showNotification('🗑️ Alle Daten gelöscht', '');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('load', () => {
+    loadStoredLogo();
+    const saved = localStorage.getItem('icu_current_player');
+    if (saved) {
+        const players = getAllPlayers();
+        const player = players.find(p => p.id === saved);
+        if (player) { currentPlayerId = saved; gameData = player; showMainApp(); }
+    }
+});
+
+// Autosave alle 15 Sekunden
+setInterval(() => { if (currentPlayerId) saveGameData(); }, 15000);
+</script>
+</body>
+</html>
